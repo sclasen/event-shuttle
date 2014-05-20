@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"time"
 	"log"
+	"os"
 )
 
 type Endpoint struct{
@@ -58,6 +59,8 @@ func (e *Endpoint)sendEvent(event *EventIn) {
 	defer func(){
 		if r := recover(); r != nil {
 			log.Println("at=recover-send-event-panic")
+			//if we get here, we are shutting down, but the recover stops it, so exit
+			os.Exit(2)
 		}
 	}()
 	// the store owns the in channel and can close it on shutdown
