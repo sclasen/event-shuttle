@@ -18,7 +18,7 @@ func StartEndpoint(port string, store *Store) *Endpoint {
 	endpoint := Endpoint{store:store}
 	mux := pat.New()
 	mux.Post(fmt.Sprintf("/:channel"), http.HandlerFunc(endpoint.PostEvent))
-	http.ListenAndServe("127.0.0.1:"+port, mux)
+	go http.ListenAndServe("127.0.0.1:"+port, mux)
 	return &endpoint
 }
 

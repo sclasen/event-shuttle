@@ -2,7 +2,6 @@ package main
 
 import (
 	"os"
-	"fmt"
 	"os/signal"
 	"syscall"
 	"log"
@@ -15,6 +14,7 @@ func main() {
 	ringmaster := flag.Bool("ringmaster", false, "use RINGMASTER_URL from env to lookup seed brokers")
 	brokers := flag.String("brokers", "", "comma seperated list of ip:port to use as seed brokers")
 	db := flag.String("db", "events.db", "name of the boltdb database file")
+	port := flag.String("port", "3887", "port on which to listen for events")
 
 	flag.Parse()
 
@@ -27,7 +27,7 @@ func main() {
 
 	store, err := OpenStore(*db)
 	if err != nil {
-		log.Panicf("unable to open events.db, exiting! %v", err)
+		log.Panicf("unable to open events.db, exiting! %v\n", err)
 	}
 
 	var brokerList []string
@@ -35,7 +35,7 @@ func main() {
 	if *ringmaster {
 		rb, err := KafkaSeedBrokers(os.Getenv("RINGMASTER_URL"), "kafka")
 		if err != nil {
-			log.Panicf("unable to get Kafka Seed Brokers, exiting! %v", err)
+			log.Panicf("unable to get Kafka Seed Brokers, exiting! %v\n", err)
 		}
 		brokerList = rb
 	} else {
@@ -44,17 +44,24 @@ func main() {
 
 	deliver, err := NewKafkaDeliver(store, "test", brokerList)
 	if err != nil {
-		log.Panicf("unable to create KafkaDeliver, exiting! %v", err)
+		log.Panicf("unable to create KafkaDeliver, exiting! %v\n", err)
 	}
 
 	deliver.Start()
-	StartEndpoint("3887", store)
+	StartEndpoint(*port, store)
 
-	sig := <-exitChan
-	fmt.Println(sig)
-
-	store.Close()
-	deliver.Stop()
+	select {
+	case sig := <-exitChan:
+		log.Printf("go=main at=received-signal signal=%s\n", sig)
+		err := store.Close()
+		deliver.Stop()
+		if err != nil {
+			log.Printf("go=main at=store-close-error error=%s\n", err)
+			os.Exit(1)
+		} else {
+			log.Printf("go=main at=store-closed-cleanly\n")
+		}
+	}
 
 }
 

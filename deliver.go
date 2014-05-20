@@ -79,7 +79,6 @@ func (k *KafkaDeliver) deliverEvents(num int) {
 			k.shutdown <- true
 			return
 		case event, ok := <-k.store.eventsOut:
-			log.Printf("go=deliver num=%d at=event-out channel=%s", num, event.event.Channel)
 			if ok {
 				err := k.producer.SendMessage(event.event.Channel, nil, sarama.ByteEncoder(event.event.Body))
 				if err != nil {

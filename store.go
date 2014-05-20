@@ -173,7 +173,9 @@ func (s *Store) cleanEvents() {
 			return
 		case delivered, ok := <-s.eventsDelivered:
 			if ok {
-				log.Printf("go=clean at=delete sequence=%d", delivered)
+				if delivered%1000 == 0 {
+					log.Printf("go=read at=read sequence=%d", delivered)
+				}
 				s.deleteEvent(delivered)
 			}
 		case failed, ok := <-s.eventsFailed:
