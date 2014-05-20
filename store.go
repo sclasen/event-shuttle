@@ -10,7 +10,6 @@ import (
 )
 
 var EVENTS_BUCKET = []byte("events")
-var READ_POINTER = []byte("read-pointer")
 
 type Store struct {
 	db              *bolt.DB
