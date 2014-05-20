@@ -7,6 +7,9 @@ import (
 	"log"
 	"flag"
 	"strings"
+     _ "net/http/pprof"
+
+	"net/http"
 )
 
 func main() {
@@ -15,8 +18,15 @@ func main() {
 	brokers := flag.String("brokers", "", "comma seperated list of ip:port to use as seed brokers")
 	db := flag.String("db", "events.db", "name of the boltdb database file")
 	port := flag.String("port", "3887", "port on which to listen for events")
+	debug := flag.Bool("debug", false, "start a pprof http server on 6060")
 
 	flag.Parse()
+
+	if *debug {
+		go func() {
+			http.ListenAndServe("localhost:6060", nil)
+		}()
+	}
 
 	exitChan := make(chan os.Signal)
 
@@ -59,7 +69,7 @@ func main() {
 			log.Printf("go=main at=store-close-error error=%s\n", err)
 			os.Exit(1)
 		} else {
-			log.Printf("go=main at=store-closed-cleanly\n")
+			log.Printf("go=main at=store-closed-cleanly \n")
 		}
 	}
 
