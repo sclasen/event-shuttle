@@ -10,7 +10,6 @@ import (
 )
 
 var EVENTS_BUCKET = []byte("events")
-var POINTERS_BUCKET = []byte("pointers")
 var READ_POINTER = []byte("read-pointer")
 
 type Store struct {
@@ -44,7 +43,7 @@ func (s *Store) EventsOutChannel() <- chan *EventOut {
 func OpenStore(dbFile string) (*Store, error) {
 	log.Printf("go=open at=open-db\n")
 	db, err := bolt.Open(dbFile, 0600)
-	//db.StrictMode = true
+
 	if err != nil {
 		log.Printf("go=open at=error-openiing-db error=%s\n", err)
 		return nil, err

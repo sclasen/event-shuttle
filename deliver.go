@@ -96,7 +96,7 @@ func (k *KafkaDeliver) deliverEvents(num int) {
 func ackEvent(store *Store, seq int64) {
 	defer func(){
 		if r := recover(); r != nil {
-			log.Println("recovered panic in ack")
+			log.Println("at=recover-ack-panic")
 		}
 	}()
 	// the store owns the ack channel and can close it on shutdown
@@ -107,7 +107,7 @@ func ackEvent(store *Store, seq int64) {
 func noAckEvent(store *Store, seq int64) {
 	defer func(){
 		if r := recover(); r != nil {
-			log.Println("recovered panic in noAck")
+			log.Println("at=recover-noack-panic")
 		}
 	}()
 	// the store owns the noAck channel and can close it on shutdown

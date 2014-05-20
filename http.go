@@ -57,7 +57,7 @@ func (e *Endpoint)PostEvent(w http.ResponseWriter, req *http.Request) {
 func (e *Endpoint)sendEvent(event *EventIn) {
 	defer func(){
 		if r := recover(); r != nil {
-			log.Println("recovered panic in sendEvent")
+			log.Println("at=recover-send-event-panic")
 		}
 	}()
 	// the store owns the in channel and can close it on shutdown
