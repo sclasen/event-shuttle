@@ -1,5 +1,4 @@
 package main
-/*
 
 import (
     "github.com/bmizerany/assert"
@@ -18,6 +17,5 @@ func TestRingmaster(t *testing.T) {
 		assert.T(t, err == nil, err)
 		log.Printf("brokers: %s",brokers)
 	}
-
 }
-*/
+

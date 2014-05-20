@@ -1,72 +1,22 @@
 package main
 
 import (
-	"github.com/boltdb/bolt"
 	"os"
 	"fmt"
-	"encoding/binary"
 	"os/signal"
 	"syscall"
+	"log"
+	"flag"
+	"strings"
 )
-//import "github.com/Shopify/sarama"
 
 func main() {
 
-	//brokerList := "the elb for megaphone, points at 9998, used as seed broker, can brokers not on a topic find those that are?"
-    //add megaphone tcp elb to ELB.yml. can elbs be restricted to sgs?
-	//memory map file to ring buffer
-	//broker := sarama.NewBroker(brokerList)
-	//start http server on unix socket, listen POST /:topic {event}
-	//start goroutine writing the buffer
-	//start gorouting reading the buffer
-	//http send (event e, chan<- ack) to writer on channel
-    /*
-On-disk format of a message
+	ringmaster := flag.Bool("ringmaster", false, "use RINGMASTER_URL from env to lookup seed brokers")
+	brokers := flag.String("brokers", "", "comma seperated list of ip:port to use as seed brokers")
+	db := flag.String("db", "events.db", "name of the boltdb database file")
 
-message end offset: 8 bytes
-topic          : 4 bytes
-crc            : 4 bytes
-payload        : n bytes
-    */
-	db, err := bolt.Open("events.db", os.ModeExclusive | 0700)
-	if err != nil {
-		panic(err)
-	}
-	tx, err := db.Begin(true)
-	if err != nil {
-		panic(err)
-	}
-	events, err := tx.CreateBucketIfNotExists([]byte("events"))
-	if err != nil {
-		panic(err)
-	}
-	pointers, err := tx.CreateBucketIfNotExists([]byte("pointers"))
-	if err != nil {
-		panic(err)
-	}
-
-	buffer := make([]byte, 8)
-	binary.PutVarint(buffer, 1)
-	err = events.Put(buffer, []byte("{}"))
-	if err != nil {
-		panic(err)
-	}
-	err = pointers.Put([]byte("max"), buffer)
-	if err != nil {
-		panic(err)
-	}
-	err = tx.Commit()
-	tx, err = db.Begin(true)
-	if err != nil {
-		panic(err)
-	}
-	events = tx.Bucket([]byte("events"))
-	if err != nil {
-		panic(err)
-	}
-	value := events.Get(buffer)
-	fmt.Println(string(value))
-	tx.Commit()
+	flag.Parse()
 
 	exitChan := make(chan os.Signal)
 
@@ -74,23 +24,51 @@ payload        : n bytes
 		syscall.SIGINT,
 		syscall.SIGTERM,
 		syscall.SIGQUIT)
-	sig := <- exitChan
+
+	store, err := OpenStore(*db)
+	if err != nil {
+		log.Panicf("unable to open events.db, exiting! %v", err)
+	}
+
+	var brokerList []string
+
+	if *ringmaster {
+		rb, err := KafkaSeedBrokers(os.Getenv("RINGMASTER_URL"), "kafka")
+		if err != nil {
+			log.Panicf("unable to get Kafka Seed Brokers, exiting! %v", err)
+		}
+		brokerList = rb
+	} else {
+		brokerList = strings.Split(*brokers, ",")
+	}
+
+	deliver, err := NewKafkaDeliver(store, "test", brokerList)
+	if err != nil {
+		log.Panicf("unable to create KafkaDeliver, exiting! %v", err)
+	}
+
+	deliver.Start()
+	StartEndpoint("3887", store)
+
+	sig := <-exitChan
 	fmt.Println(sig)
-	db.Close()
 
-
+	store.Close()
+	deliver.Stop()
 
 }
 
-
 type EventIn struct {
-	channel string
-	body []byte
+	event *Event
 	saved chan bool
 }
 
 type EventOut struct {
-	channel string
-	body []byte
+	event *Event
 	sequence int64
+}
+
+type Event struct{
+	Channel string
+	Body    []byte
 }

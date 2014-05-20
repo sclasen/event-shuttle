@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"bytes"
 	"math"
+	"encoding/gob"
 )
 
 var EVENTS_BUCKET = []byte("events")
@@ -48,6 +49,9 @@ func OpenStore(dbFile string) (*Store, error) {
 		log.Printf("go=open at=error-openiing-db error=%s\n", err)
 		return nil, err
 	}
+
+	gob.Register(Event{})
+
 	lastWritePointer, readPointer, err := findReadAndWritePointers(db)
 	if err != nil {
 		log.Printf("go=open at=read-pointers-error error=%s\n", err)
@@ -84,8 +88,9 @@ func (s *Store) Close() error {
 	s.stopRead <- true
 	//drain events out so the readEvents goroutine can unblock and exit.
 	s.drainEventsOut()
-	//close eventsDelivered, eventsFailed so cleanEvents can unblock and exit.
-	//todo how to do this when senders are happeining
+	//close channels so receivers can unblock and exit
+	//external senders should wrap sends in a recover so they dont panic
+	//when the channels are closed on shutdown
 	close(s.eventsIn)
 	close(s.eventsDelivered)
 	close(s.eventsFailed)
@@ -141,7 +146,6 @@ func (s *Store) readEvents() {
 			}
 		case _, ok := <-s.readTrigger:
 			if ok {
-				log.Printf("go=read at=begin sequence=%d", s.readPointer)
 				event, err := s.readEvent(s.readPointer)
 				if event != nil {
 					s.eventsOut <- event
@@ -171,6 +175,7 @@ func (s *Store) cleanEvents() {
 			return
 		case delivered, ok := <-s.eventsDelivered:
 			if ok {
+				log.Printf("go=clean at=delete sequence=%d", delivered)
 				s.deleteEvent(delivered)
 			}
 		case failed, ok := <-s.eventsFailed:
@@ -191,7 +196,12 @@ func (s *Store) cleanEvents() {
 func (s *Store) writeEvent(seq int64, e *EventIn) error {
 	err := s.db.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(EVENTS_BUCKET)
-		err := bucket.Put(writeSequence(seq), e.body)
+		encoded, err := encodeEvent(e.event)
+		if err != nil {
+			log.Printf("go=store at=encode-fail error=%s\n", err)
+			return err
+		}
+		err = bucket.Put(writeSequence(seq), encoded)
 		if err != nil {
 			log.Printf("go=store at=put-fail error=%s\n", err)
 			return err
@@ -211,14 +221,19 @@ func (s *Store) readEvent(seq int64) (*EventOut, error) {
 	var eventOut *EventOut
 	err := s.db.Update(func(tx *bolt.Tx) error {
 		events := tx.Bucket(EVENTS_BUCKET)
-		event := events.Get(writeSequence(seq))
-		if event == nil {
+		eventBytes := events.Get(writeSequence(seq))
+		if eventBytes == nil || len(eventBytes) == 0 {
 			return nil
 		} else {
 			if seq%1000 == 0 {
 				log.Printf("go=read at=read sequence=%d", seq)
 			}
-			eventOut = &EventOut{sequence:seq, body:event}
+			event, err := decodeEvent(eventBytes)
+			if err != nil {
+				log.Printf("go=read at=decode-fail error=%s\n", err)
+				return err
+			}
+			eventOut = &EventOut{sequence:seq, event:event}
 			return nil
 		}
 	})
@@ -266,15 +281,6 @@ func (s *Store) drainEventsReRead() {
 	}
 }
 
-func getReadPointer(tx *bolt.Tx) (int64, error) {
-	pointers := tx.Bucket(POINTERS_BUCKET)
-	readBytes := pointers.Get(READ_POINTER)
-	if readBytes == nil {
-		return 1, nil
-	} else {
-		return readSequence(readBytes)
-	}
-}
 
 func findReadAndWritePointers(db *bolt.DB) (int64, int64, error) {
 	writePointer := int64(0)
@@ -318,4 +324,16 @@ func writeSequence(seq int64) []byte {
 	buffer := make([]byte, 16)
 	binary.PutVarint(buffer, seq)
 	return buffer
+}
+
+func decodeEvent(eventBytes []byte) (*Event, error){
+	evt := &Event{}
+	err := gob.NewDecoder(bytes.NewBuffer(eventBytes)).Decode(evt)
+	return evt, err
+}
+
+func encodeEvent(evt *Event) ([]byte, error) {
+    eventBytes := new(bytes.Buffer)
+	err := gob.NewEncoder(eventBytes).Encode(evt)
+	return eventBytes.Bytes(), err
 }

@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"encoding/json"
 	"errors"
-	"strings"
 )
 
-func KafkaSeedBrokers(ringmasterUrl, kafkaChroot string) (string, error) {
+func KafkaSeedBrokers(ringmasterUrl, kafkaChroot string) ([]string, error) {
 	tr := http.DefaultTransport.(*http.Transport)
 	tr.TLSClientConfig = &tls.Config{
 		InsecureSkipVerify: true,
@@ -19,29 +18,29 @@ func KafkaSeedBrokers(ringmasterUrl, kafkaChroot string) (string, error) {
 
 	res, err := client.Get(listUrl)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if res.StatusCode != 200 {
-		return "", errors.New(fmt.Sprintf("non 200 from get broker list: %d %s", res.StatusCode, res.Body))
+		return nil, errors.New(fmt.Sprintf("non 200 from get broker list: %d %s", res.StatusCode, res.Body))
 	}
 
 	var dir []ZkDirEntry
 	err = json.NewDecoder(res.Body).Decode(&dir)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
     var addresses []string
 	for _, broker := range dir {
 		address, err := brokerAddress(client, ringmasterUrl, broker.Key)
 		if err != nil {
-			return  "", err
+			return  nil, err
 		}
 		fmt.Println(address)
 		addresses = append(addresses, address + "/" + kafkaChroot)
 	}
 
-	return strings.Join(addresses, ","), nil
+	return addresses, nil
 
 }
 

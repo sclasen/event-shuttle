@@ -4,10 +4,19 @@ event-shuttle
 goal: unix system service that collects transactional events and reliably delivers them to the event processing infrastructure,
  relieving other services on the same system from having to do so.
 
-listens on 127.0.0.1:3887, rest-api `POST /:channel -d envelope.json` endpoint for events from github.com/heroku/events.
+provides a normalized interface to the event processing infrastructure, so that we can change the underlying implementation without app changes.
 
-journal to bolt db
+* listens on 127.0.0.1:3887, rest-api is `POST /:channel -d envelope.json`
+* validates the envelope and the event it contains against schema for events from `github.com/heroku/events`.
+* journals events to bolt db.
+* discovers brokers via ringmaster.
+* delivers events to megaphone.
 
-talk to ringmaster, megaphone.
+status
+------
+
+* everything above except event json validation.
+
+
 
 

@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"encoding/json"
 	"time"
+	"log"
 )
 
 type Endpoint struct{
@@ -33,8 +34,8 @@ func (e *Endpoint)PostEvent(w http.ResponseWriter, req *http.Request) {
 			w.Write(BodyErr)
 		} else {
 			saved := make(chan bool)
-			event := EventIn{channel:channel, body:body, saved: saved}
-		    e.store.EventsInChannel() <- &event
+			event := EventIn{ event: &Event{Channel:channel, Body:body}, saved: saved }
+		    e.sendEvent(&event)
 			timeout := time.After(1 * time.Second)
 			select {
 			case ok := <-saved:
@@ -51,8 +52,21 @@ func (e *Endpoint)PostEvent(w http.ResponseWriter, req *http.Request) {
 
 		}
 	}
+}
 
+func (e *Endpoint)sendEvent(event *EventIn) {
+	defer func(){
+		if r := recover(); r != nil {
+			log.Println("recovered panic in sendEvent")
+		}
+	}()
+	// the store owns the in channel and can close it on shutdown
+	// so we wrap this call which can panic in a recover
+    e.send(event)
+}
 
+func (e *Endpoint)send(event *EventIn) {
+	e.store.EventsInChannel() <- event
 }
 
 var NoChannel = Json(ErrJson{id:"no-channel", message:"no event channel specified"})
