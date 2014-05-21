@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 	"github.com/stretchr/testify/assert"
-	"github.com/Shopify/sarama"
+	"github.com/sclasen/sarama"
 	"fmt"
 	_ "net/http/pprof"
 	"net/http"

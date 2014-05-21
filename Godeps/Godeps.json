@@ -8,10 +8,6 @@
 			"Rev": "12e4b4183793ac4b061921e7980845e750679fd0"
 		},
 		{
-			"ImportPath": "github.com/Shopify/sarama",
-			"Rev": "da8e7da3d59f264e314daa7c33e01db84d0b06c9"
-		},
-		{
 			"ImportPath": "github.com/bmizerany/assert",
 			"Comment": "release.r60-6-ge17e998",
 			"Rev": "e17e99893cb6509f428e1728281c2ad60a6b31e3"
@@ -33,6 +29,10 @@
 		{
 			"ImportPath": "github.com/kr/text",
 			"Rev": "6807e777504f54ad073ecef66747de158294b639"
+		},
+		{
+			"ImportPath": "github.com/sclasen/sarama",
+			"Rev": "64219ad92b83ab50800c35254747a142962d4a35"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",

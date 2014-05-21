@@ -16,7 +16,7 @@ type Deliver interface {
 type KafkaDeliver struct{
 	store *Store
 	clientId string
-	brokerList string
+	brokerList []string
 	clientConfig *sarama.ClientConfig
 	client *sarama.Client
 	producerConfig *sarama.ProducerConfig
@@ -92,9 +92,6 @@ func (k *KafkaDeliver) deliverEvents(num int) {
 				if err != nil {
 					log.Printf("go=deliver num=%d at=send-error error=%v", num, err)
 					noAckEvent(k.store, event.sequence)
-					k.producer.Close()
-					k.client.Close()
-					k.client
 				} else {
 					ackEvent(k.store, event.sequence)
 				}
