@@ -40,20 +40,20 @@ func TestOpenCloseStore(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		store, err := OpenStore("test.db")
 		assert.T(t, err == nil, err)
-		init := store.EventsSequence()
+		init := store.getWritePointer()
 		acks := make(chan bool)
 		for i := 0; i < 100; i++ {
 			store.EventsInChannel() <- &EventIn{ event: &Event{ Channel:"test", Body:[]byte("BODY") }, saved:acks}
 			<-acks
 		}
-		curr := store.EventsSequence()
+		curr := store.getWritePointer()
 		assert.Equal(t, init+100, curr)
 		log.Println("CLOSING")
 		store.Close()
 
 		store, err = OpenStore("test.db")
 		assert.T(t, err == nil, err)
-		init = store.EventsSequence()
+		init = store.getWritePointer()
 		assert.Equal(t, init, curr)
 		store.Close()
 	}

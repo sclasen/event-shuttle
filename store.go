@@ -32,10 +32,6 @@ type Store struct {
 	shutdown         chan bool
 }
 
-func (s *Store) EventsSequence() int64 {
-	return s.writePointer
-}
-
 func (s *Store) EventsInChannel() chan <- *EventIn {
 	return s.eventsIn
 }
