@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/Shopify/sarama"
+	"github.com/sclasen/sarama"
 	//"net"
 	"time"
 	"log"
@@ -15,7 +15,11 @@ type Deliver interface {
 
 type KafkaDeliver struct{
 	store *Store
+	clientId string
+	brokerList string
+	clientConfig *sarama.ClientConfig
 	client *sarama.Client
+	producerConfig *sarama.ProducerConfig
 	producer *sarama.Producer
 	deliverGoroutines int
 	shutdownDeliver chan bool
@@ -51,9 +55,13 @@ func NewKafkaDeliver(store *Store, clientId string, brokerList []string) (*Kafka
 	log.Println("go=kafka at=created-producer")
 
 	return &KafkaDeliver{
+		clientId: clientId,
+		brokerList: brokerList,
 		store: store,
 		producer: producer,
+		producerConfig: producerConfig,
 		client: client,
+		clientConfig: clientConfig,
 		deliverGoroutines: 8,
 		shutdownDeliver: make(chan bool, 8),
 		shutdown: make(chan bool, 8),
@@ -84,6 +92,9 @@ func (k *KafkaDeliver) deliverEvents(num int) {
 				if err != nil {
 					log.Printf("go=deliver num=%d at=send-error error=%v", num, err)
 					noAckEvent(k.store, event.sequence)
+					k.producer.Close()
+					k.client.Close()
+					k.client
 				} else {
 					ackEvent(k.store, event.sequence)
 				}
