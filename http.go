@@ -18,13 +18,13 @@ type Endpoint struct{
 func StartEndpoint(port string, store *Store) *Endpoint {
 	endpoint := Endpoint{store:store}
 	mux := pat.New()
-	mux.Post(fmt.Sprintf("/:channel"), http.HandlerFunc(endpoint.PostEvent))
+	mux.Post(fmt.Sprintf("/:topic"), http.HandlerFunc(endpoint.PostEvent))
 	go http.ListenAndServe("127.0.0.1:"+port, mux)
 	return &endpoint
 }
 
 func (e *Endpoint)PostEvent(w http.ResponseWriter, req *http.Request) {
-	channel := req.URL.Query().Get(":channel")
+	channel := req.URL.Query().Get(":topic")
 	if channel == "" {
 		w.WriteHeader(400)
 		w.Write(NoChannel)

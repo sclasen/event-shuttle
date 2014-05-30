@@ -8,13 +8,13 @@ import (
 	"errors"
 )
 
-func KafkaSeedBrokers(ringmasterUrl, kafkaChroot string) ([]string, error) {
+func KafkaSeedBrokers(exhibitorUrl, kafkaChroot string) ([]string, error) {
 	tr := http.DefaultTransport.(*http.Transport)
 	tr.TLSClientConfig = &tls.Config{
 		InsecureSkipVerify: true,
 	}
 	client := &http.Client{Transport: tr}
-	listUrl := fmt.Sprintf("%s/exhibitor/v1/explorer/node/?key=/%s/%s", ringmasterUrl, kafkaChroot, "brokers/ids")
+	listUrl := fmt.Sprintf("%s/exhibitor/v1/explorer/node/?key=/%s/%s", exhibitorUrl, kafkaChroot, "brokers/ids")
 
 	res, err := client.Get(listUrl)
 	if err != nil {
@@ -32,7 +32,7 @@ func KafkaSeedBrokers(ringmasterUrl, kafkaChroot string) ([]string, error) {
 
     var addresses []string
 	for _, broker := range dir {
-		address, err := brokerAddress(client, ringmasterUrl, broker.Key)
+		address, err := brokerAddress(client, exhibitorUrl, broker.Key)
 		if err != nil {
 			return  nil, err
 		}
@@ -44,8 +44,8 @@ func KafkaSeedBrokers(ringmasterUrl, kafkaChroot string) ([]string, error) {
 
 }
 
-func brokerAddress(client *http.Client, ringmasterUrl, zkPath string) (string, error) {
-	seedUrl := fmt.Sprintf("%s/exhibitor/v1/explorer/node-data/?key=%s", ringmasterUrl,  zkPath)
+func brokerAddress(client *http.Client, exhibitorUrl, zkPath string) (string, error) {
+	seedUrl := fmt.Sprintf("%s/exhibitor/v1/explorer/node-data/?key=%s", exhibitorUrl,  zkPath)
 	res2, err := client.Get(seedUrl)
 	if err != nil {
 		return "", err

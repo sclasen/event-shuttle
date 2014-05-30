@@ -7,10 +7,10 @@ import (
 	"os"
 )
 
-func TestRingmaster(t *testing.T) {
-	url := os.Getenv("RINGMASTER_URL")
+func TestExhibitor(t *testing.T) {
+	url := os.Getenv("EXHIBITOR_URL")
 	if url == "" {
-		log.Println("RINGMASTER_URL not set, skipping TestRingmaster")
+		log.Println("EXHIBITOR_URL not set, skipping TestExhibitor")
 		return
 	} else {
 		brokers, err := KafkaSeedBrokers(url, "kafka")

@@ -14,7 +14,7 @@ import (
 
 func main() {
 
-	ringmaster := flag.Bool("ringmaster", false, "use RINGMASTER_URL from env to lookup seed brokers")
+	exhibitor := flag.Bool("exhibitor", false, "use EXHIBITOR_URL from env to lookup seed brokers")
 	brokers := flag.String("brokers", "", "comma seperated list of ip:port to use as seed brokers")
 	db := flag.String("db", "events.db", "name of the boltdb database file")
 	port := flag.String("port", "3887", "port on which to listen for events")
@@ -42,8 +42,8 @@ func main() {
 
 	var brokerList []string
 
-	if *ringmaster {
-		rb, err := KafkaSeedBrokers(os.Getenv("RINGMASTER_URL"), "kafka")
+	if *exhibitor {
+		rb, err := KafkaSeedBrokers(os.Getenv("EXHIBITOR_URL"), "kafka")
 		if err != nil {
 			log.Panicf("unable to get Kafka Seed Brokers, exiting! %v\n", err)
 		}
