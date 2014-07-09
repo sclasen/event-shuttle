@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/sclasen/sarama"
+	"github.com/Shopify/sarama"
 	//"net"
-	"time"
+	//"time"
 	"log"
 )
 
@@ -28,19 +28,8 @@ type KafkaDeliver struct{
 
 func NewKafkaDeliver(store *Store, clientId string, brokerList []string) (*KafkaDeliver, error) {
 	log.Println("go=kafka at=new-kafka-deliver")
-	clientConfig := &sarama.ClientConfig{
-		MetadataRetries:      10,
-		WaitForElection:      10 * time.Second,
-		ConcurrencyPerBroker: 10,
-	}
-	producerConfig := &sarama.ProducerConfig{
-		Partitioner:      nil,
-		RequiredAcks:     sarama.WaitForLocal,
-		Timeout:          int32(5000),
-		Compression:      sarama.CompressionNone,
-		MaxBufferedBytes: uint32(1000),
-		MaxBufferTime:    uint32(1000),
-	}
+	clientConfig := sarama.NewClientConfig()
+	producerConfig := sarama.NewProducerConfig()
 
     client, err := sarama.NewClient(clientId, brokerList, clientConfig)
 	if err != nil {

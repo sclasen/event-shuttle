@@ -8,6 +8,10 @@
 			"Rev": "12e4b4183793ac4b061921e7980845e750679fd0"
 		},
 		{
+			"ImportPath": "github.com/Shopify/sarama",
+			"Rev": "c2d008d4c21b2b029cb20f1276159c5c05f4a596"
+		},
+		{
 			"ImportPath": "github.com/bmizerany/assert",
 			"Comment": "release.r60-6-ge17e998",
 			"Rev": "e17e99893cb6509f428e1728281c2ad60a6b31e3"

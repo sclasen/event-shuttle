@@ -14,22 +14,22 @@ import (
 var EVENTS_BUCKET = []byte("events")
 
 type Store struct {
-	db              *bolt.DB
-	eventsIn         chan *EventIn
-	eventsOut        chan *EventOut
-	eventsReRead     chan *EventOut
-	eventsDelivered  chan int64
-	eventsFailed     chan int64
-	readPointer      int64
-	readPointerLock  sync.RWMutex
-	writePointer     int64
-	writePointerLock sync.RWMutex
-	readTrigger      chan bool
-	stopStore        chan bool
-	stopRead         chan bool
-	stopClean        chan bool
-	stopReport       chan bool
-	shutdown         chan bool
+	db                 *bolt.DB
+	eventsIn           chan *EventIn
+	eventsOut          chan *EventOut
+	eventsDelivered    chan int64
+	eventsFailed       chan int64
+	readPointerUpdates chan int64
+	readPointer        int64
+	readPointerLock    sync.RWMutex
+	writePointer       int64
+	writePointerLock   sync.RWMutex
+	readTrigger        chan bool
+	stopStore          chan bool
+	stopRead           chan bool
+	stopClean          chan bool
+	stopReport         chan bool
+	shutdown           chan bool
 }
 
 func (s *Store) EventsInChannel() chan <- *EventIn {
@@ -67,15 +67,15 @@ func OpenStore(dbFile string) (*Store, error) {
 		log.Printf("go=open at=read-pointers-error error=%s\n", err)
 		return nil, err
 	}
-	log.Printf("go=open at=read-pointers read=%d write=%d\n", readPointer, lastWritePointer)
+	log.Printf("go=open at=read-pointers read=%d write=%d\n", readPointer, lastWritePointer+1)
 
 	store := &Store{
 		db:db,
 		eventsIn: make(chan *EventIn),
 		eventsOut: make(chan *EventOut, 32),
-		eventsReRead: make(chan *EventOut, 32),
 		eventsDelivered: make(chan int64, 32),
 		eventsFailed: make(chan int64, 32),
+		readPointerUpdates: make(chan int64),
 		writePointer: lastWritePointer + 1,
 		readPointer: readPointer,
 		readTrigger:  make(chan bool, 1), //buffered so reader can send to itself
@@ -108,7 +108,6 @@ func (s *Store) Close() error {
 	close(s.eventsIn)
 	close(s.eventsDelivered)
 	close(s.eventsFailed)
-	close(s.eventsReRead)
 	<-s.shutdown
 	<-s.shutdown
 	<-s.shutdown
@@ -122,7 +121,7 @@ func (s *Store) storeEvents() {
 		select {
 		case e, ok := <-s.eventsIn:
 			if ok {
-				err := s.writeEvent(s.writePointer, e)
+				err := s.writeEvent(s.getWritePointer(), e)
 				if err == nil {
 					s.incrementWritePointer()
 					s.triggerRead()
@@ -151,22 +150,22 @@ func (s *Store) readEvents() {
 		case <-s.stopRead:
 			log.Println("go=read at=shutdown-read")
 			close(s.eventsOut)
-			//unblock the cleanEvents send if necessary
-			go s.drainEventsReRead()
 		s.shutdown <- true
 			return
-		case e, ok := <-s.eventsReRead:
-			if ok {
-				s.eventsOut <- e
-			}
 		case _, ok := <-s.readTrigger:
 			if ok {
-				event, err := s.readEvent(s.readPointer)
+				read := s.getReadPointer()
+				event, err := s.readEvent(read)
 				if event != nil {
 					s.eventsOut <- event
-					s.incrementReadPointer()
+					s.incrementReadPointer(read)
 					s.triggerRead()
 				}
+				if err == nil && event == nil && s.getWritePointer() > read {
+					s.incrementReadPointer(read)
+					s.triggerRead()
+				}
+
 				if err != nil {
 					log.Printf("go=read at=read-error error=%s", err)
 				}
@@ -197,11 +196,8 @@ func (s *Store) cleanEvents() {
 			}
 		case failed, ok := <-s.eventsFailed:
 			if ok {
-				event, err := s.readEvent(failed)
-				if err != nil {
-					log.Printf("go=clean at=re-read-error error=%s", err)
-				} else {
-					s.eventsReRead <- event
+				if s.getReadPointer() > failed {
+					s.setReadPointer(failed)
 				}
 			}
 		}
@@ -308,23 +304,21 @@ func (s *Store) drainEventsOut() {
 	}
 }
 
-func (s *Store) drainEventsReRead() {
-	for {
-		select {
-		case _, ok := <-s.eventsReRead:
-			if !ok {
-				return
-			}
-		default:
-		}
+
+func (s *Store) incrementReadPointer(read int64) {
+	s.readPointerLock.Lock()
+	defer s.readPointerLock.Unlock()
+	if s.readPointer == read {
+		s.readPointer += 1
 	}
 }
 
-func (s *Store) incrementReadPointer() {
+func (s *Store) setReadPointer(rp int64) {
 	s.readPointerLock.Lock()
 	defer s.readPointerLock.Unlock()
-	s.readPointer += 1
+	s.readPointer = rp
 }
+
 
 func (s *Store) incrementWritePointer() {
 	s.writePointerLock.Lock()
