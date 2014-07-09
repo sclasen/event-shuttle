@@ -19,7 +19,6 @@ type Store struct {
 	eventsOut          chan *EventOut
 	eventsDelivered    chan int64
 	eventsFailed       chan int64
-	readPointerUpdates chan int64
 	readPointer        int64
 	readPointerLock    sync.RWMutex
 	writePointer       int64
@@ -75,7 +74,6 @@ func OpenStore(dbFile string) (*Store, error) {
 		eventsOut: make(chan *EventOut, 32),
 		eventsDelivered: make(chan int64, 32),
 		eventsFailed: make(chan int64, 32),
-		readPointerUpdates: make(chan int64),
 		writePointer: lastWritePointer + 1,
 		readPointer: readPointer,
 		readTrigger:  make(chan bool, 1), //buffered so reader can send to itself
