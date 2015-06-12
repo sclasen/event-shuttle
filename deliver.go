@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/Shopify/sarama"
+	"github.com/sclasen/sarama"
 	//"net"
 	//"time"
 	"log"
@@ -28,8 +28,8 @@ type KafkaDeliver struct{
 
 func NewKafkaDeliver(store *Store, clientId string, brokerList []string) (*KafkaDeliver, error) {
 	log.Println("go=kafka at=new-kafka-deliver")
-	clientConfig := sarama.NewClientConfig()
-	producerConfig := sarama.NewProducerConfig()
+	clientConfig := new(sarama.ClientConfig)
+	producerConfig := new(sarama.ProducerConfig)
 
     client, err := sarama.NewClient(clientId, brokerList, clientConfig)
 	if err != nil {
